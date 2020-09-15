@@ -51,12 +51,15 @@ public class OrderService {
                     new Exception("商品" + purchaseProductId + "仅剩" + currentCount + "件，无法购买");
 
         // 计算剩余库存
-        Integer leftCount = currentCount - purchaseProductNum;
-        // 更新库存
-        product.setCount(leftCount);
-        product.setUpdateTime(new Date());
-        product.setUpdateUser("xxx");
-        productMapper.updateByPrimaryKeySelective(product);
+//        Integer leftCount = currentCount - purchaseProductNum;
+//        // 更新库存
+//        product.setCount(leftCount);
+//        product.setUpdateTime(new Date());
+//        product.setUpdateUser("xxx");
+//        productMapper.updateByPrimaryKeySelective(product);
+
+        productMapper.updateProductCount(purchaseProductNum,"xxx",new Date(),product.getId());
+
 
         Order order = new Order();
         order.setOrderAmount(product.getPrice().multiply(new BigDecimal(purchaseProductNum)));
