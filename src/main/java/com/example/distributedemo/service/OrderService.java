@@ -34,11 +34,19 @@ public class OrderService {
     private int purchaseProductId = 100100;
     //购买商品数量
     private int purchaseProductNum = 1;
+    @Autowired
+    private PlatformTransactionManager platformTransactionManager;
+    @Autowired
+    private TransactionDefinition transactionDefinition;
 
-    @Transactional(rollbackFor = Exception.class)
-    public Integer createOrder() throws Exception {
+    //    @Transactional(rollbackFor = Exception.class)
+    public synchronized Integer createOrder() throws Exception {
+
+        TransactionStatus transaction = platformTransactionManager.getTransaction(transactionDefinition);
+
         Product product = productMapper.selectByPrimaryKey(purchaseProductId);
         if (product == null) {
+            platformTransactionManager.rollback(transaction);
             throw new Exception("购买商品：" + purchaseProductId + "不存在");
         }
 
@@ -46,9 +54,12 @@ public class OrderService {
         Integer currentCount = product.getCount();
         System.out.println(Thread.currentThread().getName() + "库存数：" + currentCount);
         //校验库存
-        if (purchaseProductNum > currentCount)
+        if (purchaseProductNum > currentCount) {
+            platformTransactionManager.rollback(transaction);
             throw
                     new Exception("商品" + purchaseProductId + "仅剩" + currentCount + "件，无法购买");
+
+        }
 
         // 计算剩余库存
 //        Integer leftCount = currentCount - purchaseProductNum;
@@ -58,8 +69,9 @@ public class OrderService {
 //        product.setUpdateUser("xxx");
 //        productMapper.updateByPrimaryKeySelective(product);
 
-        productMapper.updateProductCount(purchaseProductNum,"xxx",new Date(),product.getId());
-
+        productMapper.updateProductCount(purchaseProductNum, "xxx", new Date(), product.getId());
+        // 检索商品的库存
+        // 如果商品库存为负数，抛出异常
 
         Order order = new Order();
         order.setOrderAmount(product.getPrice().multiply(new BigDecimal(purchaseProductNum)));
@@ -82,6 +94,7 @@ public class OrderService {
         orderItem.setUpdateTime(new Date());
         orderItem.setUpdateUser("xxx");
         orderItemMapper.insertSelective(orderItem);
+        platformTransactionManager.commit(transaction);
         return order.getId();
     }
 }
