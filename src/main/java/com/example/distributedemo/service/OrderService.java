@@ -39,29 +39,33 @@ public class OrderService {
     @Autowired
     private TransactionDefinition transactionDefinition;
 
+    private Object object = new Object();
+
     //    @Transactional(rollbackFor = Exception.class)
-    public synchronized Integer createOrder() throws Exception {
+    public Integer createOrder() throws Exception {
+        Product product = null;
 
-        TransactionStatus transaction = platformTransactionManager.getTransaction(transactionDefinition);
+        synchronized (this) {
+            TransactionStatus transaction1 = platformTransactionManager.getTransaction(transactionDefinition);
 
-        Product product = productMapper.selectByPrimaryKey(purchaseProductId);
-        if (product == null) {
-            platformTransactionManager.rollback(transaction);
-            throw new Exception("购买商品：" + purchaseProductId + "不存在");
-        }
+            product = productMapper.selectByPrimaryKey(purchaseProductId);
+            if (product == null) {
+                platformTransactionManager.rollback(transaction1);
+                throw new Exception("购买商品：" + purchaseProductId + "不存在");
+            }
 
-        //商品当前库存
-        Integer currentCount = product.getCount();
-        System.out.println(Thread.currentThread().getName() + "库存数：" + currentCount);
-        //校验库存
-        if (purchaseProductNum > currentCount) {
-            platformTransactionManager.rollback(transaction);
-            throw
-                    new Exception("商品" + purchaseProductId + "仅剩" + currentCount + "件，无法购买");
+            //商品当前库存
+            Integer currentCount = product.getCount();
+            System.out.println(Thread.currentThread().getName() + "库存数：" + currentCount);
+            //校验库存
+            if (purchaseProductNum > currentCount) {
+                platformTransactionManager.rollback(transaction1);
+                throw
+                        new Exception("商品" + purchaseProductId + "仅剩" + currentCount + "件，无法购买");
 
-        }
+            }
 
-        // 计算剩余库存
+            // 计算剩余库存
 //        Integer leftCount = currentCount - purchaseProductNum;
 //        // 更新库存
 //        product.setCount(leftCount);
@@ -69,9 +73,14 @@ public class OrderService {
 //        product.setUpdateUser("xxx");
 //        productMapper.updateByPrimaryKeySelective(product);
 
-        productMapper.updateProductCount(purchaseProductNum, "xxx", new Date(), product.getId());
-        // 检索商品的库存
-        // 如果商品库存为负数，抛出异常
+            productMapper.updateProductCount(purchaseProductNum, "xxx", new Date(), product.getId());
+            // 检索商品的库存
+            // 如果商品库存为负数，抛出异常
+            platformTransactionManager.commit(transaction1);
+
+        }
+
+        TransactionStatus transaction = platformTransactionManager.getTransaction(transactionDefinition);
 
         Order order = new Order();
         order.setOrderAmount(product.getPrice().multiply(new BigDecimal(purchaseProductNum)));
