@@ -41,11 +41,16 @@ public class OrderService {
 
     private Object object = new Object();
 
+    private Lock lock = new ReentrantLock();
+
+
     //    @Transactional(rollbackFor = Exception.class)
     public Integer createOrder() throws Exception {
         Product product = null;
 
-        synchronized (this) {
+        lock.lock();
+        try {
+            /*  synchronized (this) {*/
             TransactionStatus transaction1 = platformTransactionManager.getTransaction(transactionDefinition);
 
             product = productMapper.selectByPrimaryKey(purchaseProductId);
@@ -78,6 +83,9 @@ public class OrderService {
             // 如果商品库存为负数，抛出异常
             platformTransactionManager.commit(transaction1);
 
+            /*  }*/
+        } finally {
+            lock.unlock();
         }
 
         TransactionStatus transaction = platformTransactionManager.getTransaction(transactionDefinition);
